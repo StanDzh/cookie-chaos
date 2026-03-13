@@ -6,8 +6,9 @@ const state = {
   cookies: 0,
   cookiesPerClick: 1,
   cookiesPerSecond: 0,
-  totalEarned: 0,   // all-time earned — used for unlock thresholds & chaos level
+  totalEarned: 0,
   totalClicked: 0,
+  ascensions: 0,
 };
 
 // ── Upgrades catalogue ──────────────────────────────────────────────────────
@@ -55,6 +56,91 @@ const UPGRADES = [
 ];
 
 const purchased = new Set();
+
+// ── Ascension ─────────────────────────────────────────────────────────────────
+function getAscensionMult() {
+  return 1 + state.ascensions * 0.1;
+}
+
+function doAscend() {
+  state.ascensions++;
+  state.cookies = 0;
+  state.cookiesPerClick = 1;
+  state.cookiesPerSecond = 0;
+  state.totalEarned = 0;
+  state.totalClicked = 0;
+  purchased.clear();
+  seenMilestones.clear();
+  milestoneQueue.length = 0;
+  currentChaosLevel = 0;
+  applyChaosLevel(0, false);
+  updateDisplay();
+  renderUpgrades();
+  saveGame();
+  showToast(`🌌 Ascended! Bonus is now +${state.ascensions * 10}%`);
+}
+
+// ── Save / Load ──────────────────────────────────────────────────────────────
+const SAVE_KEY = 'cookie-chaos-v1';
+
+function saveGame() {
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify({
+      cookies:          state.cookies,
+      cookiesPerClick:  state.cookiesPerClick,
+      cookiesPerSecond: state.cookiesPerSecond,
+      totalEarned:      state.totalEarned,
+      totalClicked:     state.totalClicked,
+      ascensions:       state.ascensions,
+      purchased:        [...purchased],
+      seenMilestones:   [...seenMilestones],
+    }));
+    showToast('💾 Saved');
+  } catch (e) {
+    console.warn('Save failed:', e);
+  }
+}
+
+function loadGame() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return;
+    const d = JSON.parse(raw);
+    state.cookies          = d.cookies          ?? 0;
+    state.cookiesPerClick  = d.cookiesPerClick   ?? 1;
+    state.cookiesPerSecond = d.cookiesPerSecond  ?? 0;
+    state.totalEarned      = d.totalEarned       ?? 0;
+    state.totalClicked     = d.totalClicked      ?? 0;
+    state.ascensions       = d.ascensions        ?? 0;
+    (d.purchased      ?? []).forEach(id => purchased.add(id));
+    (d.seenMilestones ?? []).forEach(t  => seenMilestones.add(t));
+  } catch (e) {
+    console.warn('Load failed — starting fresh:', e);
+  }
+}
+
+// ── Toast notification ───────────────────────────────────────────────────────
+let toastTimer = null;
+
+function showToast(msg) {
+  const toast = document.getElementById('save-toast');
+  toast.textContent = msg;
+  toast.classList.add('visible');
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('visible'), 2500);
+}
+
+// ── Ascend button visibility ─────────────────────────────────────────────────
+function checkAscendButton() {
+  const btn  = document.getElementById('ascend-btn');
+  const info = document.getElementById('ascension-display');
+  btn.style.display  = state.cookies >= 1e9 ? 'flex' : 'none';
+  info.style.display = state.ascensions > 0  ? 'block' : 'none';
+  if (state.ascensions > 0) {
+    document.getElementById('ascension-count').textContent = state.ascensions;
+    document.getElementById('ascension-bonus').textContent = `+${state.ascensions * 10}%`;
+  }
+}
 
 // ── Chaos levels ─────────────────────────────────────────────────────────────
 const CHAOS_LEVELS = [
@@ -179,11 +265,11 @@ function checkChaosLevel() {
   }
 }
 
-function applyChaosLevel(level) {
+function applyChaosLevel(level, animate = true) {
   document.body.className = document.body.className.replace(/\bchaos-\d+\b/g, '').trim();
   document.body.classList.add(`chaos-${level}`);
 
-  if (level > 0) {
+  if (animate && level > 0) {
     document.body.classList.add('chaos-transitioning');
     setTimeout(() => document.body.classList.remove('chaos-transitioning'), 900);
   }
@@ -215,7 +301,7 @@ function formatCount(n) {
 
 // ── Click handler ───────────────────────────────────────────────────────────
 bigCookie.addEventListener('click', (e) => {
-  const gained = state.cookiesPerClick;
+  const gained = state.cookiesPerClick * getAscensionMult();
   state.cookies += gained;
   state.totalEarned += gained;
   state.totalClicked++;
@@ -256,7 +342,7 @@ function spawnFloater(x, y, count) {
 // ── Passive income tick (50ms = 20fps smooth) ────────────────────────────────
 setInterval(() => {
   if (state.cookiesPerSecond > 0) {
-    const gained = state.cookiesPerSecond / 20;
+    const gained = (state.cookiesPerSecond * getAscensionMult()) / 20;
     state.cookies += gained;
     state.totalEarned += gained;
   }
@@ -271,8 +357,9 @@ setInterval(() => {
 
 function updateDisplay() {
   cookieCountEl.textContent = formatCount(state.cookies);
-  cpsEl.textContent = formatCount(state.cookiesPerSecond);
-  cpcEl.textContent = formatCount(state.cookiesPerClick);
+  cpsEl.textContent = formatCount(state.cookiesPerSecond * getAscensionMult());
+  cpcEl.textContent = formatCount(state.cookiesPerClick  * getAscensionMult());
+  checkAscendButton();
 }
 
 // ── Upgrade rendering (500ms) ───────────────────────────────────────────────
@@ -337,8 +424,19 @@ function rotateTicker() {
 
 setInterval(rotateTicker, 5000);
 
+// ── Auto-save (30s) ──────────────────────────────────────────────────────────
+setInterval(saveGame, 30_000);
+
 // ── Init ─────────────────────────────────────────────────────────────────────
-applyChaosLevel(0);
+loadGame();
+
+// Apply chaos level silently from loaded state (no flash)
+const _initLevel = CHAOS_LEVELS.reduce((lvl, cl) => state.totalEarned >= cl.threshold ? cl.level : lvl, 0);
+currentChaosLevel = _initLevel;
+applyChaosLevel(_initLevel, false);
+
+document.getElementById('ascend-btn').addEventListener('click', doAscend);
+
 updateDisplay();
 renderUpgrades();
 

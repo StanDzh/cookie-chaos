@@ -30,6 +30,13 @@
         <div id="click-rate-display">
           <span id="cpc">1</span> per click
         </div>
+        <div id="ascension-display">
+          <span id="ascension-count">0</span>× ascended &nbsp;·&nbsp; <span id="ascension-bonus">+0%</span>
+        </div>
+        <button id="ascend-btn" aria-label="Ascend — reset progress for a permanent bonus">
+          ✨ Ascend
+          <span class="ascend-sub">+10% forever · resets progress</span>
+        </button>
       </section>
 
       <!-- Clicker area -->
@@ -55,6 +62,9 @@
     <footer id="chaos-ticker">
       <span id="ticker-text">The cookie watches you back.</span>
     </footer>
+
+    <!-- Save toast -->
+    <div id="save-toast"></div>
 
     <!-- Milestone overlay -->
     <div id="milestone-overlay" aria-live="assertive" aria-atomic="true">

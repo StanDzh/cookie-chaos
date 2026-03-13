@@ -99,6 +99,56 @@ html, body {
   color: var(--text-muted);
 }
 
+#ascension-display {
+  display: none;
+  margin-top: 0.75rem;
+  font-size: 0.8rem;
+  color: var(--accent-soft);
+  text-align: center;
+  border-top: 1px solid var(--border);
+  padding-top: 0.6rem;
+}
+
+#ascension-bonus {
+  font-weight: 700;
+  color: var(--accent);
+}
+
+/* Ascend button — hidden by default, shown when eligible */
+#ascend-btn {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 1rem;
+  padding: 0.75rem 1.25rem;
+  border: 2px solid gold;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #1a0f00, #2e1d00);
+  color: gold;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  box-shadow: 0 0 16px #ffd70044;
+  transition: box-shadow 0.2s, transform 0.15s;
+  width: 100%;
+}
+#ascend-btn:hover {
+  box-shadow: 0 0 32px #ffd70088;
+  transform: scale(1.03);
+}
+#ascend-btn:active {
+  transform: scale(0.97);
+}
+.ascend-sub {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 400;
+  opacity: 0.7;
+  margin-top: 0.2rem;
+  letter-spacing: 0;
+}
+
 #cps, #cpc {
   color: var(--accent-soft);
   font-weight: 600;
@@ -282,6 +332,30 @@ html, body {
     border: none;
     border-bottom: 1px solid var(--border);
   }
+}
+
+/* ── Save toast ── */
+
+#save-toast {
+  position: fixed;
+  bottom: 2.5rem;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--accent-soft);
+  font-size: 0.82rem;
+  padding: 0.45rem 1rem;
+  border-radius: 20px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  z-index: 1001;
+  white-space: nowrap;
+}
+#save-toast.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
 }
 
 /* ── Chaos level themes ─────────────────────────────────────────────────────
