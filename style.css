@@ -231,10 +231,11 @@ html, body {
   margin-top: 0.2rem;
 }
 
-.upgrade-desc {
+.upgrade-flavour {
   font-size: 0.75rem;
   color: var(--text-muted);
   margin-top: 0.3rem;
+  font-style: italic;
 }
 
 /* ── Chaos Ticker ── */
@@ -281,4 +282,109 @@ html, body {
     border: none;
     border-bottom: 1px solid var(--border);
   }
+}
+
+/* ── Chaos level themes ─────────────────────────────────────────────────────
+   Body classes chaos-0 through chaos-5 override CSS variables.
+   CSS custom properties don't animate, so level change is instant —
+   the milestone popup and chaos-transitioning flash provide the moment. */
+
+body.chaos-0 {
+  --bg: #1a0a00; --surface: #2b1500; --accent: #ff8c00;
+  --accent-soft: #ffb347; --border: #3d2200; --text-muted: #a07040;
+}
+body.chaos-1 {
+  --bg: #1d0800; --surface: #2f1200; --accent: #ff7000;
+  --accent-soft: #ffaa33; --border: #421c00; --text-muted: #9a6838;
+}
+body.chaos-2 {
+  --bg: #220500; --surface: #340900; --accent: #ff3d00;
+  --accent-soft: #ff7033; --border: #4a1000; --text-muted: #a05030;
+}
+body.chaos-3 {
+  --bg: #200010; --surface: #2d0018; --accent: #ff1155;
+  --accent-soft: #ff5577; --border: #45001f; --text-muted: #994466;
+}
+body.chaos-4 {
+  --bg: #0d0018; --surface: #160025; --accent: #bb00ff;
+  --accent-soft: #dd55ff; --border: #310055; --text-muted: #7a44aa;
+}
+body.chaos-5 {
+  --bg: #04000f; --surface: #0c001e; --accent: #5500ff;
+  --accent-soft: #9944ff; --border: #1e0044; --text-muted: #5533aa;
+}
+
+/* Eldritch pulse at max chaos */
+body.chaos-5 #big-cookie {
+  animation: eldritch-pulse 2.5s ease-in-out infinite !important;
+}
+@keyframes eldritch-pulse {
+  0%, 100% {
+    box-shadow: 0 0 30px var(--accent), 0 4px 20px #0008;
+    filter: hue-rotate(0deg) saturate(1);
+  }
+  50% {
+    box-shadow: 0 0 90px var(--accent), 0 0 60px var(--accent-soft), 0 4px 40px #000c;
+    filter: hue-rotate(40deg) saturate(1.5);
+  }
+}
+
+/* Flash overlay for chaos level transitions */
+body.chaos-transitioning::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: var(--accent);
+  pointer-events: none;
+  z-index: 998;
+  animation: chaos-flash 0.9s ease-out forwards;
+}
+@keyframes chaos-flash {
+  0%   { opacity: 0.35; }
+  100% { opacity: 0; }
+}
+
+/* ── Milestone overlay ── */
+
+#milestone-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+}
+#milestone-overlay.visible {
+  opacity: 1;
+}
+#milestone-content {
+  text-align: center;
+  padding: 2rem 3rem;
+  max-width: 600px;
+}
+#milestone-title {
+  font-size: clamp(1.8rem, 6vw, 3.2rem);
+  font-weight: 900;
+  color: var(--accent);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-shadow: 0 0 40px var(--accent), 0 0 80px var(--accent-soft);
+  animation: milestone-pop 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+#milestone-sub {
+  margin-top: 1.2rem;
+  font-size: clamp(0.9rem, 2.5vw, 1.15rem);
+  color: var(--text);
+  font-style: italic;
+  opacity: 0.85;
+  line-height: 1.5;
+}
+@keyframes milestone-pop {
+  0%   { transform: scale(0.6); opacity: 0; }
+  70%  { transform: scale(1.06); }
+  100% { transform: scale(1);   opacity: 1; }
 }
