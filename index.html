@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cookie Chaos 🍪</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+
+    <!-- Header -->
+    <header id="header">
+      <h1>🍪 Cookie Chaos</h1>
+      <p id="tagline">It starts with one cookie. It never ends there.</p>
+    </header>
+
+    <!-- Main game area -->
+    <main id="game">
+
+      <!-- Score panel -->
+      <section id="score-panel">
+        <div id="score-display">
+          <span id="cookie-count">0</span>
+          <span id="cookie-label"> cookies</span>
+        </div>
+        <div id="rate-display">
+          <span id="cps">0</span> cookies per second
+        </div>
+      </section>
+
+      <!-- Clicker area -->
+      <section id="clicker-area">
+        <button id="big-cookie" aria-label="Click to bake a cookie">
+          <span id="cookie-emoji">🍪</span>
+        </button>
+        <p id="click-feedback"></p>
+      </section>
+
+      <!-- Upgrades / Shop sidebar -->
+      <aside id="shop">
+        <h2>🛒 Upgrades</h2>
+        <p id="shop-empty">You don't have enough chaos yet.</p>
+        <ul id="upgrade-list">
+          <!-- Upgrade items injected by JS -->
+        </ul>
+      </aside>
+
+    </main>
+
+    <!-- Absurdity ticker (easter egg / flavor text zone) -->
+    <footer id="chaos-ticker">
+      <span id="ticker-text">The cookie watches you back.</span>
+    </footer>
+
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
