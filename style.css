@@ -93,7 +93,13 @@ html, body {
   color: var(--text-muted);
 }
 
-#cps {
+#click-rate-display {
+  margin-top: 0.3rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+#cps, #cpc {
   color: var(--accent-soft);
   font-weight: 600;
 }
@@ -131,9 +137,21 @@ html, body {
   box-shadow: 0 0 50px #ff8c0088, 0 4px 24px #0008;
 }
 
+/* :active kept subtle — the real feel comes from the JS .clicking animation */
 #big-cookie:active {
-  transform: scale(0.94);
-  box-shadow: 0 0 20px #ff8c0033, 0 2px 12px #0006;
+  transform: scale(0.95);
+}
+
+#big-cookie.clicking {
+  animation: cookie-bounce 0.38s cubic-bezier(0.36, 0.07, 0.19, 0.97) forwards;
+}
+
+@keyframes cookie-bounce {
+  0%   { transform: scale(1); }
+  20%  { transform: scale(0.88); }
+  55%  { transform: scale(1.10); }
+  75%  { transform: scale(0.97); }
+  100% { transform: scale(1); }
 }
 
 #click-feedback {
@@ -181,18 +199,24 @@ html, body {
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 0.75rem 1rem;
-  cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
 }
 
-.upgrade-item:hover:not(.locked) {
+.upgrade-item.affordable {
+  cursor: pointer;
   border-color: var(--accent);
+  box-shadow: 0 0 8px #ff8c0033;
+}
+
+.upgrade-item.affordable:hover {
   background: #2f1800;
+  box-shadow: 0 0 16px #ff8c0066;
 }
 
 .upgrade-item.locked {
-  opacity: 0.45;
+  opacity: 0.4;
   cursor: not-allowed;
+  border-color: var(--border);
 }
 
 .upgrade-name {
@@ -225,8 +249,6 @@ html, body {
   font-style: italic;
 }
 
-/* ── Click floaters ── */
-
 .floater {
   position: fixed;
   pointer-events: none;
@@ -234,13 +256,14 @@ html, body {
   font-weight: 700;
   color: var(--accent);
   transform: translate(-50%, -50%);
-  animation: floatUp 0.9s ease-out forwards;
+  animation: floatArc 1s ease-out forwards;
   z-index: 999;
 }
 
-@keyframes floatUp {
-  0%   { opacity: 1; transform: translate(-50%, -50%); }
-  100% { opacity: 0; transform: translate(-50%, -220%); }
+@keyframes floatArc {
+  0%   { opacity: 1;   transform: translate(calc(-50% + 0px),              -50%)  scale(1.2); }
+  40%  { opacity: 1;   transform: translate(calc(-50% + var(--drift, 0px)), -200%) scale(1); }
+  100% { opacity: 0;   transform: translate(calc(-50% + calc(var(--drift, 0px) * 1.6)), -320%) scale(0.75); }
 }
 
 /* ── Responsive (narrow screens) ── */

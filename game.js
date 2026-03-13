@@ -6,11 +6,12 @@ const state = {
   cookies: 0,
   cookiesPerClick: 1,
   cookiesPerSecond: 0,
+  totalEarned: 0,   // all-time earned — used for unlock thresholds
   totalClicked: 0,
 };
 
 // ── Upgrades catalogue ──────────────────────────────────────────────────────
-// Each upgrade: { id, name, description, cost, effect(), unlockAt }
+// unlockAt: total cookies ever earned before this upgrade becomes visible
 const UPGRADES = [
   {
     id: 'cursor',
@@ -23,18 +24,10 @@ const UPGRADES = [
   {
     id: 'grandma',
     name: '👵 Chaos Grandma',
-    description: 'She bakes. She judges. She's always watching.',
+    description: 'She bakes. She judges. She\'s always watching.',
     cost: 50,
     unlockAt: 20,
     effect() { state.cookiesPerSecond += 0.5; },
-  },
-  {
-    id: 'quantum',
-    name: '🔮 Quantum Oven',
-    description: 'Bakes cookies in parallel universes and bills you for all of them.',
-    cost: 200,
-    unlockAt: 100,
-    effect() { state.cookiesPerSecond += 2; },
   },
   {
     id: 'doubleclicker',
@@ -43,6 +36,14 @@ const UPGRADES = [
     cost: 150,
     unlockAt: 75,
     effect() { state.cookiesPerClick *= 2; },
+  },
+  {
+    id: 'quantum',
+    name: '🔮 Quantum Oven',
+    description: 'Bakes cookies in parallel universes and bills you for all of them.',
+    cost: 200,
+    unlockAt: 100,
+    effect() { state.cookiesPerSecond += 2; },
   },
   {
     id: 'blackhole',
@@ -57,13 +58,24 @@ const UPGRADES = [
 const purchased = new Set();
 
 // ── DOM refs ────────────────────────────────────────────────────────────────
-const cookieCountEl   = document.getElementById('cookie-count');
-const cpsEl           = document.getElementById('cps');
-const bigCookie       = document.getElementById('big-cookie');
-const clickFeedback   = document.getElementById('click-feedback');
-const upgradeList     = document.getElementById('upgrade-list');
-const shopEmpty       = document.getElementById('shop-empty');
-const tickerText      = document.getElementById('ticker-text');
+const cookieCountEl  = document.getElementById('cookie-count');
+const cpsEl          = document.getElementById('cps');
+const cpcEl          = document.getElementById('cpc');
+const bigCookie      = document.getElementById('big-cookie');
+const clickFeedback  = document.getElementById('click-feedback');
+const upgradeList    = document.getElementById('upgrade-list');
+const shopEmpty      = document.getElementById('shop-empty');
+const tickerText     = document.getElementById('ticker-text');
+
+// ── Number formatting ───────────────────────────────────────────────────────
+function formatCount(n) {
+  if (n >= 1e15) return (n / 1e15).toFixed(2) + 'Q';
+  if (n >= 1e12) return (n / 1e12).toFixed(2) + 'T';
+  if (n >= 1e9)  return (n / 1e9).toFixed(2) + 'B';
+  if (n >= 1e6)  return (n / 1e6).toFixed(2) + 'M';
+  if (n >= 1e3)  return (n / 1e3).toFixed(1) + 'k';
+  return Math.floor(n).toLocaleString();
+}
 
 // ── Flavor / ticker text ────────────────────────────────────────────────────
 const TICKER_LINES = [
@@ -79,64 +91,104 @@ const TICKER_LINES = [
   'The upgrades are also cookies. You just can\'t see them yet.',
 ];
 
+const FEEDBACK_LINES = [
+  'nom nom', 'yes more', 'unstoppable', 'the prophecy continues',
+  'cookie obtained', 'chaos +1', 'delicious', 'more', 'inevitable',
+];
+
 // ── Click handler ───────────────────────────────────────────────────────────
 bigCookie.addEventListener('click', (e) => {
-  state.cookies += state.cookiesPerClick;
+  const gained = state.cookiesPerClick;
+  state.cookies += gained;
+  state.totalEarned += gained;
   state.totalClicked++;
-  updateDisplay();
-  renderUpgrades();
-  spawnFloater(e.clientX, e.clientY, `+${state.cookiesPerClick}`);
+
+  triggerBounce();
+  spawnFloater(e.clientX, e.clientY, gained);
   showFeedback();
 });
 
 function showFeedback() {
-  const lines = [
-    'nom nom',
-    'yes more',
-    'unstoppable',
-    'the prophecy continues',
-    'cookie obtained',
-    'chaos +1',
-  ];
-  clickFeedback.textContent = lines[Math.floor(Math.random() * lines.length)];
+  clickFeedback.textContent = FEEDBACK_LINES[Math.floor(Math.random() * FEEDBACK_LINES.length)];
 }
 
-// ── Floating +N animation ───────────────────────────────────────────────────
-function spawnFloater(x, y, text) {
+// ── Button bounce animation ─────────────────────────────────────────────────
+function triggerBounce() {
+  bigCookie.classList.remove('clicking');
+  // Force reflow so removing+adding the class always restarts the animation
+  void bigCookie.offsetWidth;
+  bigCookie.classList.add('clicking');
+  bigCookie.addEventListener('animationend', () => bigCookie.classList.remove('clicking'), { once: true });
+}
+
+// ── Floating +N with arc ────────────────────────────────────────────────────
+function spawnFloater(x, y, count) {
   const el = document.createElement('span');
   el.className = 'floater';
-  el.textContent = text;
-  el.style.cssText = `left:${x}px;top:${y}px`;
+  el.textContent = `+${formatCount(count)}`;
+  // Random horizontal drift for arc effect: -40px to +40px
+  const drift = (Math.random() - 0.5) * 80;
+  el.style.cssText = `left:${x}px;top:${y}px;--drift:${drift}px`;
   document.body.appendChild(el);
-  el.addEventListener('animationend', () => el.remove());
+  el.addEventListener('animationend', () => el.remove(), { once: true });
 }
 
-// ── Passive income tick ─────────────────────────────────────────────────────
+// ── Passive income tick (50ms = 20fps, smooth accumulation) ─────────────────
 setInterval(() => {
   if (state.cookiesPerSecond > 0) {
-    state.cookies += state.cookiesPerSecond / 20; // runs 20x/sec → smooth
-    updateDisplay();
+    const gained = state.cookiesPerSecond / 20;
+    state.cookies += gained;
+    state.totalEarned += gained;
   }
 }, 50);
 
-// ── Upgrade rendering ───────────────────────────────────────────────────────
-function renderUpgrades() {
-  const visible = UPGRADES.filter(u => !purchased.has(u.id) && state.cookies >= u.unlockAt * 0.5);
-  shopEmpty.style.display = visible.length === 0 ? 'block' : 'none';
-  upgradeList.innerHTML = '';
+// ── Display update (250ms — readable, not flickery) ─────────────────────────
+setInterval(updateDisplay, 250);
 
+function updateDisplay() {
+  cookieCountEl.textContent = formatCount(state.cookies);
+  cpsEl.textContent = formatCount(state.cookiesPerSecond);
+  cpcEl.textContent = formatCount(state.cookiesPerClick);
+}
+
+// ── Upgrade rendering (500ms — no need to rebuild every frame) ──────────────
+setInterval(renderUpgrades, 500);
+
+function renderUpgrades() {
+  const visible = UPGRADES.filter(u => !purchased.has(u.id) && state.totalEarned >= u.unlockAt * 0.5);
+  shopEmpty.style.display = visible.length === 0 ? 'block' : 'none';
+
+  // Update existing items' affordability classes without full DOM rebuild
+  // when the visible set is the same as last render
+  const existingIds = [...upgradeList.querySelectorAll('.upgrade-item')].map(el => el.dataset.id);
+  const visibleIds = visible.map(u => u.id);
+  const sameSet = existingIds.length === visibleIds.length && visibleIds.every((id, i) => id === existingIds[i]);
+
+  if (sameSet) {
+    // Just update affordability classes and cost color
+    upgradeList.querySelectorAll('.upgrade-item').forEach(li => {
+      const upgrade = UPGRADES.find(u => u.id === li.dataset.id);
+      const canAfford = state.cookies >= upgrade.cost;
+      li.classList.toggle('locked', !canAfford);
+      li.classList.toggle('affordable', canAfford);
+      li.onclick = canAfford ? () => buyUpgrade(upgrade) : null;
+    });
+    return;
+  }
+
+  // Full rebuild only when the visible set changes
+  upgradeList.innerHTML = '';
   visible.forEach(upgrade => {
-    const li = document.createElement('li');
     const canAfford = state.cookies >= upgrade.cost;
-    li.className = `upgrade-item ${canAfford ? '' : 'locked'}`;
+    const li = document.createElement('li');
+    li.className = `upgrade-item ${canAfford ? 'affordable' : 'locked'}`;
+    li.dataset.id = upgrade.id;
     li.innerHTML = `
       <div class="upgrade-name">${upgrade.name}</div>
-      <div class="upgrade-cost">🍪 ${upgrade.cost.toLocaleString()} cookies</div>
+      <div class="upgrade-cost">🍪 ${formatCount(upgrade.cost)} cookies</div>
       <div class="upgrade-desc">${upgrade.description}</div>
     `;
-    if (canAfford) {
-      li.addEventListener('click', () => buyUpgrade(upgrade));
-    }
+    if (canAfford) li.onclick = () => buyUpgrade(upgrade);
     upgradeList.appendChild(li);
   });
 }
@@ -150,20 +202,9 @@ function buyUpgrade(upgrade) {
   renderUpgrades();
 }
 
-// ── Display update ──────────────────────────────────────────────────────────
-function updateDisplay() {
-  cookieCountEl.textContent = formatCount(state.cookies);
-  cpsEl.textContent = state.cookiesPerSecond.toFixed(1);
-}
-
-function formatCount(n) {
-  if (n >= 1e12) return (n / 1e12).toFixed(2) + ' trillion';
-  if (n >= 1e9)  return (n / 1e9).toFixed(2) + ' billion';
-  if (n >= 1e6)  return (n / 1e6).toFixed(2) + ' million';
-  return Math.floor(n).toLocaleString();
-}
-
 // ── Chaos ticker ────────────────────────────────────────────────────────────
+tickerText.style.transition = 'opacity 0.4s';
+
 function rotateTicker() {
   tickerText.style.opacity = '0';
   setTimeout(() => {
@@ -172,9 +213,9 @@ function rotateTicker() {
   }, 400);
 }
 
-tickerText.style.transition = 'opacity 0.4s';
 setInterval(rotateTicker, 6000);
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 updateDisplay();
 renderUpgrades();
+
